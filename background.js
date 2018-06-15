@@ -5,18 +5,37 @@
 'use strict';
 
 chrome.runtime.onInstalled.addListener(function() {
-  chrome.storage.sync.set({color: '#3aa757'}, function() {
-    console.log("The color is green.");
+
+  chrome.storage.sync.get(['active'], function(data) {
+    var isActivated = data.active;
+  
+    if(isActivated)
+    {
+          chrome.browserAction.setIcon({
+            path:"images/get_started32.png"
+        });
+  
+    }else 
+    {
+      chrome.browserAction.setIcon({
+        path:"images_inactif/get_started32.png"
+    });
+      
+    }
+  
+  
   });
 
-  chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
-    chrome.declarativeContent.onPageChanged.addRules([{
-      conditions: [new chrome.declarativeContent.PageStateMatcher({
-        
-      })
-      ],
-          actions: [new chrome.declarativeContent.ShowPageAction()]
-    }]);
+});
+
+
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) 
+{
+  if(request.newIconPath)
+  {
+    chrome.browserAction.setIcon({
+      path: request.newIconPath
   });
-  
+  }else 
+    chrome.browserAction.setBadgeText({text: request.number});
 });

@@ -3,10 +3,16 @@ chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
         if(request.RegEx != null)
         {
-            findMatchingPattern(new RegExp(request.RegEx,'g'),sendResponse)
+            findMatchingPattern(request.RegEx)
         }else if(request.cancel)
         {
             cancelHighlight()
+        }else if(request.lastSearch)
+        {
+            lastSearch()
+        }else if (request.clearResult)
+        {
+            clearResult()
         }
         if (request.RegExp)
             sendResponse({farewell: "goodbye"});
@@ -31,31 +37,40 @@ function extractContent(s) {
 
 
 
-  function findMatchingPattern(pattern,reponseFun)
+  function findMatchingPattern(pattern)
   {
     
     cancelHighlight()
-
+    var RE = new RegExp(pattern,'g')
     var str = extractContent(document.body.innerHTML) // extract the content from the body
     console.log(str)
-    var re = pattern;
+    var re = RE;
     var trouve = str.match(re);
     
+    chrome.storage.sync.set({lastSearch: pattern}, function() {
+        console.log("last searched saved");
+      });
+
+
     if (trouve)
     {
         //console.log(trouve)
-        sendToExtension(trouve.length)
+        sendToExtension({number: ""+trouve.length})
         highlight(removeDuplicates(trouve))
-        return document.getElementsByClassName("highlight")
+    }else 
+    {
+        sendToExtension({number: '0'})
     }
+    
 
+    
   }
 
 
   function sendToExtension(params)
   {
-    chrome.runtime.sendMessage(params, function(response){});
-    console.log("Helloooo")
+      console.log(params)
+    chrome.runtime.sendMessage(params);
   }
 
 
@@ -86,12 +101,55 @@ function removeDuplicates(arr){
 function cancelHighlight()
 {
     var highlighted = document.getElementsByClassName("highlight")
+    sendToExtension({number: ""})
+    chrome.storage.sync.set({lastSearch: ""}, function() {
+        console.log("last search erased");
+      });
 
     do
     {
         for (i = 0; i < highlighted.length; i++) 
         {
-            highlighted[i].removeAttribute("class")
+            highlighted[i].outerHTML = highlighted[i].innerHTML
+        } 
+        highlighted = document.getElementsByClassName("highlight")
+
+   }while(highlighted.length != 0);
+}
+
+
+
+chrome.storage.sync.get(['active'], function(data) {
+    var isActivated = data.active;
+  
+    
+    if(isActivated)
+    {
+       lastSearch()
+    }
+    
+});
+
+
+function lastSearch()
+{
+    chrome.storage.sync.get(['lastSearch'], function(data) {
+        if (data.lastSearch)
+            findMatchingPattern(data.lastSearch)
+    });
+}
+
+function clearResult()
+{
+    var highlighted = document.getElementsByClassName("highlight")
+    sendToExtension({number: ""})
+    
+
+    do
+    {
+        for (i = 0; i < highlighted.length; i++) 
+        {
+            highlighted[i].outerHTML = highlighted[i].innerHTML
         } 
         highlighted = document.getElementsByClassName("highlight")
 
